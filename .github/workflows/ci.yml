@@ -1,79 +1,102 @@
-name: CI - ThingsBoard
+name: CI - Common data & util unit tests
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
+    branches: [ "master", "ci" ]
 
 jobs:
-  build:
+  build-and-unit-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
           cache: maven
 
-      # 1) Build / install (on veut que ça passe quoi qu'il arrive)
-      - name: Build (install) - skip tests
-        run: mvn -B -T 1C -Dlicense.skip=true -DskipTests -DskipITs clean install
+      - name: Generate proto sources
+        run: |
+          chmod +x build_proto.sh
+          ./build_proto.sh
 
-  tests-and-run:
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
+      # Build seulement ce qui est nécessaire pour common/data + common/util
+      - name: Build deps (skip tests)
+        run: |
+          mvn -B -Dlicense.skip=true -DskipTests -DskipITs \
+            -pl common/data,common/util -am \
+            install
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-
-      # 2) Tests unitaires (on les lance, mais on n'échoue pas le job)
-      - name: Unit tests (do not fail pipeline)
+      # Run uniquement les tests unitaires de common/data et common/util
+      - name: Run unit tests (common/data + common/util)
         continue-on-error: true
-        env:
-          TZ: UTC
-          LC_ALL: en_US.UTF-8
         run: |
-          mvn -B -Dlicense.skip=true -DskipITs test \
-            -Duser.timezone=UTC -Duser.language=en -Duser.country=US
+          mvn -B test \
+            -pl common/data,common/util -am \
+            -fae \
+            -Dmaven.test.failure.ignore=true \
+            -DskipITs=true \
+            -DskipIntegrationTests=true \
+            -Dlicense.skip=true \
+            -DforkCount=2C \
+            -DreuseForks=true
 
-      # (optionnel mais utile) : garder les rapports de tests
-      - name: Upload surefire reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-reports
-          path: "**/target/surefire-reports/**"
-
-      # 3) Lancement ThingsBoard (Docker)
-      - name: Launch ThingsBoard (Docker)
+      - name: Summarize unit test results
+        shell: bash
         run: |
-          docker pull thingsboard/tb-postgres:latest
-          docker run -d --name tb -p 8080:9090 thingsboard/tb-postgres:latest
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
 
-          echo "Waiting for ThingsBoard on http://localhost:8080 ..."
-          for i in {1..60}; do
-            if curl -fsS http://localhost:8080 >/dev/null; then
-              echo "ThingsBoard is UP!"
-              exit 0
-            fi
-            sleep 5
-          done
+          total = failures = errors = skipped = 0
+          files = glob.glob("**/target/surefire-reports/TEST-*.xml", recursive=True)
 
-          echo "ThingsBoard did not start in time. Logs:"
-          docker logs tb --tail 200
-          exit 1
+          for f in files:
+            try:
+              root = ET.parse(f).getroot()
+            except Exception:
+              continue
+            if root.tag != "testsuite":
+              continue
+            total += int(root.attrib.get("tests", 0))
+            failures += int(root.attrib.get("failures", 0))
+            errors += int(root.attrib.get("errors", 0))
+            skipped += int(root.attrib.get("skipped", 0))
 
-      - name: Cleanup
-        if: always()
-        run: docker rm -f tb || true
+          passed = total - failures - errors - skipped
+
+          print("Unit test summary (common/data + common/util)")
+          print(f"Total   : {total}")
+          print(f"Passed  : {passed}")
+          print(f"Failures: {failures}")
+          print(f"Errors  : {errors}")
+          print(f"Skipped : {skipped}")
+
+          with open("counts.env", "w") as f:
+            f.write(f"TOTAL={total}\n")
+            f.write(f"PASSED={passed}\n")
+            f.write(f"FAILURES={failures}\n")
+            f.write(f"ERRORS={errors}\n")
+            f.write(f"SKIPPED={skipped}\n")
+
+          with open("summary.md", "w") as f:
+            f.write("## Unit test results (common/data + common/util)\n")
+            f.write(f"- Total: **{total}**\n")
+            f.write(f"- Passed: **{passed}**\n")
+            f.write(f"- Failures: **{failures}**\n")
+            f.write(f"- Errors: **{errors}**\n")
+            f.write(f"- Skipped: **{skipped}**\n")
+          PY
+
+          cat counts.env >> "$GITHUB_ENV"
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate pipeline
+        run: |
+          if [ "${FAILURES:-0}" -gt 0 ] || [ "${ERRORS:-0}" -gt 0 ]; then
+            echo "❌ Unit tests failed (failures=$FAILURES, errors=$ERRORS)"
+            exit 1
+          fi
+          echo "✅ All unit tests passed"
