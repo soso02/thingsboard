@@ -56,3 +56,27 @@ jobs:
             -Dlicense.skip=true \
             -DforkCount=2C \
             -DreuseForks=true
+    
+      - name: Launch ThingsBoard (Docker)
+        run: |
+          docker pull thingsboard/tb-postgres:latest
+          docker run -d --name tb -p 8080:9090 thingsboard/tb-postgres:latest
+
+          echo "Waiting for ThingsBoard on http://localhost:8080 ..."
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8080 >/dev/null; then
+              echo "ThingsBoard is UP!"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "ThingsBoard did not start in time. Logs:"
+          docker logs tb --tail 200
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f tb || true
+      
+        
