@@ -1,0 +1,57 @@
+name: CI - ThingsBoard
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+
+jobs:
+  build-test-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # 1) Compilation + résolution des SNAPSHOT locaux
+      - name: Build (install SNAPSHOT locally)
+        run: mvn -B -DskipTests install
+
+      # 2) Tests unitaires (sans les modules Docker/Testcontainers)
+      - name: Unit tests
+        env:
+          TZ: UTC
+        run: |
+          mvn -B test \
+            -pl !netty-mqtt \
+            "-Duser.timezone=UTC" "-Duser.language=en" "-Duser.country=US"
+
+      # 3) Lancement de ThingsBoard (Docker)
+      - name: Launch ThingsBoard (Docker)
+        run: |
+          docker pull thingsboard/tb-postgres:latest
+          docker run -d --name tb -p 8080:9090 thingsboard/tb-postgres:latest
+
+          echo "Waiting for ThingsBoard on http://localhost:8080 ..."
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8080 >/dev/null; then
+              echo "ThingsBoard is UP!"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "ThingsBoard did not start in time. Logs:"
+          docker logs tb --tail 200
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f tb || true
