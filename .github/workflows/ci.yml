@@ -42,7 +42,7 @@ jobs:
       # Build seulement ce qui est nécessaire pour common/data + common/util
       - name: Build deps (skip tests)
         run: |
-          mvn -B -DskipTests \
+          mvn -B -Dlicense.skip=true -DskipTests \
             -pl common/data,common/util -am \
             install
 
@@ -53,6 +53,7 @@ jobs:
             -pl common/data,common/util -am \
             -fae \
             -DskipIntegrationTests=true \
+            -Dlicense.skip=true \
             -DforkCount=2C \
             -DreuseForks=true
 
