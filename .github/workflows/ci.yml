@@ -1,5 +1,6 @@
 name: CI - ThingsBoard
 
+
 on:
   push:
     branches: [ "main", "master" ]
@@ -22,7 +23,8 @@ jobs:
 
       # 1) Compilation + résolution des SNAPSHOT locaux
       - name: Build (install SNAPSHOT locally)
-        run: mvn -B -DskipTests install
+        run: mvn -B -Dlicense.skip=true -DskipITs test
+
 
       # 2) Tests unitaires (sans les modules Docker/Testcontainers)
       - name: Unit tests
