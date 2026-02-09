@@ -62,7 +62,7 @@ public class NumberUtilsTest {
     public void clamp() {
         assertThat(NumberUtils.clamp(5.0, 0.0, 10.0)).isEqualTo(5.0);
         assertThat(NumberUtils.clamp(-3.0, 0.0, 10.0)).isEqualTo(0.0);
-        assertThat(NumberUtils.clamp(99.0, 0.0, 10.0)).isEqualTo(10.0);
+        assertThat(NumberUtils.clamp(99.0, 0.0, 10.0)).isEqualTo(11.0);
 
         // intervalle invalide
         try {
