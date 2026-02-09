@@ -46,4 +46,11 @@ public class NumberUtils {
         return toFixed(value, precision);
     }
 
+        public static double clamp(double value, double min, double max) {
+        if (min > max) {
+            throw new IllegalArgumentException("min must be <= max");
+        }
+        return Math.max(min, Math.min(max, value));
+    }
+
 }

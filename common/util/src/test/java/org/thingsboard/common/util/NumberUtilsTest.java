@@ -58,4 +58,19 @@ public class NumberUtilsTest {
         assertThat(NumberUtils.roundResult(doubleVal, 2)).isEqualTo(1729.17);
     }
 
+        @Test
+    public void clamp() {
+        assertThat(NumberUtils.clamp(5.0, 0.0, 10.0)).isEqualTo(5.0);
+        assertThat(NumberUtils.clamp(-3.0, 0.0, 10.0)).isEqualTo(0.0);
+        assertThat(NumberUtils.clamp(99.0, 0.0, 10.0)).isEqualTo(10.0);
+
+        // intervalle invalide
+        try {
+            NumberUtils.clamp(1.0, 10.0, 0.0);
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage()).contains("min must be <= max");
+        }
+    }
+
+
 }
