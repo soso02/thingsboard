@@ -1,3 +1,19 @@
+#
+# Copyright © 2016-2026 The Thingsboard Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 name: CI - Common data & util unit tests
 
 on:
@@ -26,7 +42,7 @@ jobs:
       # Build seulement ce qui est nécessaire pour common/data + common/util
       - name: Build deps (skip tests)
         run: |
-          mvn -B -Dlicense.skip=true -DskipTests -DskipITs \
+          mvn -B  -DskipTests -DskipITs \
             -pl common/data,common/util -am \
             install
 
@@ -40,7 +56,6 @@ jobs:
             -Dmaven.test.failure.ignore=true \
             -DskipITs=true \
             -DskipIntegrationTests=true \
-            -Dlicense.skip=true \
             -DforkCount=2C \
             -DreuseForks=true
 
@@ -96,7 +111,7 @@ jobs:
       - name: Validate pipeline
         run: |
           if [ "${FAILURES:-0}" -gt 0 ] || [ "${ERRORS:-0}" -gt 0 ]; then
-            echo "❌ Unit tests failed (failures=$FAILURES, errors=$ERRORS)"
+            echo "Unit tests failed (failures=$FAILURES, errors=$ERRORS)"
             exit 1
           fi
-          echo "✅ All unit tests passed"
+          echo "All unit tests passed"
