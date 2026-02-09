@@ -8,6 +8,14 @@ on:
 jobs:
   build-test-run:
     runs-on: ubuntu-latest
+    env:
+      # Important: ne pas mettre UTC si tes tests attendent un +3h
+      TZ: Europe/Moscow
+      MAVEN_OPTS: >-
+        -Duser.timezone=Europe/Moscow
+        -Duser.language=ru
+        -Duser.country=RU
+        -Dfile.encoding=UTF-8
 
     steps:
       - name: Checkout
@@ -20,11 +28,11 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # 1) Build / install sans tests (sinon TbDateTest casse le build)
-      - name: Build (skip tests)
-        run: mvn -B -Dlicense.skip=true -DskipTests install
+      # 1) Build + tests unitaires (skip licence + skip IT)
+      - name: Build + Unit Tests
+        run: mvn -B -Dlicense.skip=true -DskipITs test
 
-      # 2) Lancement de ThingsBoard via Docker
+      # 2) Lancement de ThingsBoard (Docker)
       - name: Launch ThingsBoard (Docker)
         run: |
           docker pull thingsboard/tb-postgres:latest
