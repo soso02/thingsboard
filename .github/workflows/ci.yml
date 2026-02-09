@@ -40,7 +40,7 @@ jobs:
           ./build_proto.sh
 
       # Build seulement ce qui est nécessaire pour common/data + common/util
-      - name: Build deps (skip tests)
+      - name: Build deps
         run: |
           mvn -B -Dlicense.skip=true -DskipTests \
             -pl common/data,common/util -am \
@@ -56,60 +56,3 @@ jobs:
             -Dlicense.skip=true \
             -DforkCount=2C \
             -DreuseForks=true
-
-      # - name: Summarize unit test results
-      #   shell: bash
-      #   run: |
-      #     python3 - <<'PY'
-      #     import glob, xml.etree.ElementTree as ET
-
-      #     total = failures = errors = skipped = 0
-      #     files = glob.glob("**/target/surefire-reports/TEST-*.xml", recursive=True)
-
-      #     for f in files:
-      #       try:
-      #         root = ET.parse(f).getroot()
-      #       except Exception:
-      #         continue
-      #       if root.tag != "testsuite":
-      #         continue
-      #       total += int(root.attrib.get("tests", 0))
-      #       failures += int(root.attrib.get("failures", 0))
-      #       errors += int(root.attrib.get("errors", 0))
-      #       skipped += int(root.attrib.get("skipped", 0))
-
-      #     passed = total - failures - errors - skipped
-
-      #     print("Unit test summary (common/data + common/util)")
-      #     print(f"Total   : {total}")
-      #     print(f"Passed  : {passed}")
-      #     print(f"Failures: {failures}")
-      #     print(f"Errors  : {errors}")
-      #     print(f"Skipped : {skipped}")
-
-      #     with open("counts.env", "w") as f:
-      #       f.write(f"TOTAL={total}\n")
-      #       f.write(f"PASSED={passed}\n")
-      #       f.write(f"FAILURES={failures}\n")
-      #       f.write(f"ERRORS={errors}\n")
-      #       f.write(f"SKIPPED={skipped}\n")
-
-      #     with open("summary.md", "w") as f:
-      #       f.write("## Unit test results (common/data + common/util)\n")
-      #       f.write(f"- Total: **{total}**\n")
-      #       f.write(f"- Passed: **{passed}**\n")
-      #       f.write(f"- Failures: **{failures}**\n")
-      #       f.write(f"- Errors: **{errors}**\n")
-      #       f.write(f"- Skipped: **{skipped}**\n")
-      #     PY
-
-      #     cat counts.env >> "$GITHUB_ENV"
-      #     cat summary.md >> "$GITHUB_STEP_SUMMARY"
-
-      # - name: Validate pipeline
-      #   run: |
-      #     if [ "${FAILURES:-0}" -gt 0 ] || [ "${ERRORS:-0}" -gt 0 ]; then
-      #       echo "Unit tests failed (failures=$FAILURES, errors=$ERRORS)"
-      #       exit 1
-      #     fi
-      #     echo "All unit tests passed"
