@@ -27,12 +27,19 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # 1) Build + tests unitaires (skip licence + skip IT)
-      - name: Build + Unit Tests
-        continue-on-error: true
-        run: mvn -B -Dlicense.skip=true -DskipITs test
+      # 1) BUILD seulement (compile + package), sans tests
+      - name: Build (skip tests)
+        run: mvn -B -Dlicense.skip=true -DskipTests install
 
-      # 2) Lancement de ThingsBoard (Docker)
+      # 2) TESTS unitaires (séparés)
+      #    -> on les exécute tous, mais on n'échoue pas le job si ça fail
+      - name: Unit tests (allow failures)
+        continue-on-error: true
+        env:
+          TZ: UTC
+        run: mvn -B -Dlicense.skip=true test
+
+      # 3) Lancement ThingsBoard (Docker)
       - name: Launch ThingsBoard (Docker)
         run: |
           docker pull thingsboard/tb-postgres:latest
