@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+common/script/script-api/src/main/java/org/thingsboard/script/api/tbel/TbDate.java
 set -e # exit on any error
 
 #PROJECTS="msa/tb-node,msa/web-ui,rule-engine-pe/rule-node-twilio-sms"

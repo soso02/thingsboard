@@ -2,14 +2,13 @@ name: CI - ThingsBoard
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: [ "main", "master" ]
   pull_request:
-  workflow_dispatch:
 
 jobs:
   build:
-    name: Build (skip tests)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -20,16 +19,14 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # Build "install" en local Maven (dans le runner), SANS tests
-      - name: Maven install (skip tests + skip license)
-        run: |
-          mvn -B -Dlicense.skip=true -DskipTests -DskipITs clean install
+      # 1) Build / install (on veut que ça passe quoi qu'il arrive)
+      - name: Build (install) - skip tests
+        run: mvn -B -T 1C -Dlicense.skip=true -DskipTests -DskipITs clean install
 
-  unit-tests:
-    name: Unit tests (allowed to fail)
+  tests-and-run:
     runs-on: ubuntu-latest
     needs: build
-    continue-on-error: true
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -40,19 +37,25 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # Lance les tests unitaires même si certains échouent
-      - name: Run unit tests
+      # 2) Tests unitaires (on les lance, mais on n'échoue pas le job)
+      - name: Unit tests (do not fail pipeline)
+        continue-on-error: true
         env:
           TZ: UTC
+          LC_ALL: en_US.UTF-8
         run: |
           mvn -B -Dlicense.skip=true -DskipITs test \
             -Duser.timezone=UTC -Duser.language=en -Duser.country=US
 
-  run-thingsboard:
-    name: Run ThingsBoard (Docker smoke test)
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
+      # (optionnel mais utile) : garder les rapports de tests
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: "**/target/surefire-reports/**"
+
+      # 3) Lancement ThingsBoard (Docker)
       - name: Launch ThingsBoard (Docker)
         run: |
           docker pull thingsboard/tb-postgres:latest
